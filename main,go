@@ -1,0 +1,106 @@
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"math/rand"
+	"strconv"
+	"github.com/gorilla/mux"
+)
+
+// We create our Struct (Model)
+type Bookstruct {
+	ID		string  `json:"id"`
+	Isbn	string  `json:"isbn"`
+	Title	string  `json:"title"`
+	Author	*Author `json:"author"`
+}
+
+// Create a separate name for the author
+type Author struct {
+	FirstName	string `json: "firstname"`
+	LastName	string `json: "lastname"`
+}
+
+//  Init books var as a slice book struct
+var books Book
+
+// Get All Books
+func getBooks(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content Type", "application/json")
+	json.NewEncorder(w).Encoder(books)
+}
+
+// Get single book
+func getBook(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content Type", "application/json")
+	params := mux.Vars(r)
+	// Loop through books to fing correct item
+	for _, item := range books {
+		if item.ID == params["id"]{
+			json.NewEncoder(w).Encode(item)
+			return
+		}
+	}
+	json.NewEncorder(w).Encode(&Book{})
+}
+
+// Create a new book
+func createBook(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content Type", "application/json")
+	var book Book
+	_= json.NewDecoder(r.Body).Decode(&Book)
+	book.ID = strconv.ITOa(rand.Intn(1000000)) // Mock ID; Not safe
+	books = append(books, book)
+	json.NewEncorder(w).Encode(book)
+}
+
+// Update books
+func updateBooks(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content Type", "application/json")
+	params := mux.Vars(r)
+	for index, item := range books {
+		if item.ID == params["id"] {
+			books = append(books[:index], books[index+1:]...)
+			var book Book
+			_= json.NewDecoder(r.Body).Decode(&Book)
+			book.ID = strconv.ITOa(rand.Intn(1000000)) // Mock ID; Not safe
+			books = append(books, book)
+			json.NewEncorder(w).Encode(book)
+			return
+		}
+	}
+	json.NewEncorder(w).Encode(books)
+}
+
+// Delete books
+func deleteBooks(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content Type", "application/json")
+	params := mux.Vars(r)
+	for index, item := range books {
+		if item.ID == params["id"] {
+			books = append(books[:index], books[index+1:]...)
+			break
+		}
+	}
+	json.NewEncorder(w).Encode(books)
+}
+func main(){
+	// Init the Router
+	r := mux.NewRouter
+
+	// mock Data; to implement DB
+	books = append(books, Book{ID: "1", Isbn: "478254", Title: "Book One", Author: &Author
+	{Firstname: "John", Lastname: "Huff"}})
+	books = append(books, Book{ID: "2", Isbn: "478255", Title: "Book Two", Author: &Author
+	{Firstname: "Leo", Lastname: "Pat"}})
+	// Create route handlers which will establish our endpoints
+	r.HandleFunc("/api/books", getBooks).Methods("GET")
+	r.HandleFunc("/api/books/{id}", getBook).Methods("GET")
+	r.HandleFunc("/api/books", createBook).Methods("POST")
+	r.HandleFunc("/api/books/{id}", updateBook).Methods("PUT")
+	r.HandleFunc("/api/books/{id}", deleteBook).Methods("DELETE")
+
+	log.fatal(http.ListenAndServe(":8000", r))
+}
